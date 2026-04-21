@@ -1,0 +1,16 @@
+{
+  "name": "TRANSMUTE: Alchemcial Habits",
+  "short_name": "TRANSMUTE",
+  "description": "Transmuta tus hábitos en esencia.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#D4AF37",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

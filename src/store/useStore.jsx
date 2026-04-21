@@ -1,0 +1,686 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { z } from 'zod';
+import { toast } from 'sonner';
+import Award from 'lucide-react/dist/esm/icons/award';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Zap from 'lucide-react/dist/esm/icons/zap';
+import Flame from 'lucide-react/dist/esm/icons/flame';
+import Shield from 'lucide-react/dist/esm/icons/shield';
+import Crown from 'lucide-react/dist/esm/icons/crown';
+import Sprout from 'lucide-react/dist/esm/icons/sprout';
+import Trees from 'lucide-react/dist/esm/icons/trees';
+import React from 'react';
+
+import { supabase } from '../lib/supabase';
+import { habitDefinitions, achievementsDefinitions } from '../data/habitDefinitions';
+import { trackEvent, identifyUser } from '../utils/analytics';
+import { oracle } from '../utils/oracle';
+
+
+import { HabitRepository } from '../repositories/HabitRepository';
+import { SocialRepository } from '../repositories/SocialRepository';
+import {
+  calculateStreak,
+  calculateLevelFromXp,
+  evaluateLevelUnlock,
+  checkAchievements,
+  isPerfectDay,
+} from '../domain/HabitDomain';
+import {
+  calculateCompletionXp,
+  calculateEntropyPenalty,
+  getStreakPhaseName,
+  XP_ACTIONS,
+} from '../domain/XPDomain';
+
+const habitSchema = z.object({
+  name: z.string().min(1, "El nombre del elemento no puede estar vacío").max(50, "El nombre es demasiado largo para ser estable"),
+});
+
+export const useStore = create(
+  persist(
+    (set, get) => ({
+      user: null,
+      session: null,
+      habits: [],
+      unlockedLevel: 1,
+      selectedDate: (function(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })(),
+      xp: 0,
+      level: 1,
+      achievements: [],
+      readArticles: [],
+      bestStreak: 0,
+      perfectDaysCount: 0,         
+      globalGoal: { completed: 0, target: 1000 },
+      showLevelModal: false,
+      isOnline: true,
+      lastUnlockedLevelAcknowledged: 1,
+      isSeeding: false,
+      theme: 'citrinitas', 
+      pulseEvent: { id: 0, x: 0, y: 0 }, 
+      triggerPulse: (x, y) => set({ pulseEvent: { id: Date.now(), x, y } }),
+      settings: {
+        notificationsEnabled: true,  
+        vibrationEnabled: true,       
+        audioEnabled: true,
+        displayName: 'Adept #001',
+        avatar: 'User',
+        isPublic: true,
+        hasFinishedOnboarding: false,
+        useDefaultHabits: true,
+        isGuidedMode: true,
+        appMode: 'Aventura'
+      },
+      installationDate: (function(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })(),
+      globalStats: { totalUsers: 0, recentLikes: [], recentCompletions: [] },
+      isResetting: false,
+      pendingSyncs: [],
+      _hasHydrated: false,
+      setHasHydrated: (val) => set({ _hasHydrated: val }),
+      
+      setOnline: (status) => {
+        set({ isOnline: status });
+        if (status) {
+          get().processPendingSyncs();
+        }
+      },
+
+      processPendingSyncs: async () => {
+        const { session, pendingSyncs, isOnline } = get();
+        if (!session || !isOnline || !pendingSyncs || pendingSyncs.length === 0) return;
+
+        
+        const queue = [...pendingSyncs];
+        set({ pendingSyncs: [] });
+        
+        for (const op of queue) {
+          try {
+            if (op.type === 'completion') {
+              await HabitRepository.syncCompletion(session.user.id, op.habitId, op.date, op.isRemoving);
+            } else if (op.type === 'add_habit') {
+              const h = await HabitRepository.createHabit(session.user.id, op.name, op.metadata);
+              
+              set(state => ({
+                habits: state.habits.map(hab => hab.id === op.habitId ? { ...hab, id: h.id } : hab)
+              }));
+            } else if (op.type === 'delete_habit') {
+              
+              
+              if (!op.habitId.startsWith('tmp-')) {
+                await HabitRepository.deleteHabit(session.user.id, op.habitId);
+              }
+            }
+          } catch (err) {
+            console.error("Fallo de sync offline, reenviando a entropía:", err.message || err);
+            
+            
+            if (err?.status !== 400) {
+              set(state => ({ pendingSyncs: [...state.pendingSyncs, op] }));
+            }
+            
+            if (err?.status === 401 || err?.status === 403) break;
+          }
+        }
+      },
+      
+      fetchGlobalStats: async () => {
+        try {
+          const stats = await HabitRepository.getGlobalStats();
+          set({ globalStats: stats });
+        } catch (e) {
+          console.error("Error en las crónicas globales:", e);
+        }
+      },
+      
+      addXp: (amount, articleId) => {
+        const { xp, readArticles } = get();
+        if (articleId && readArticles.includes(articleId)) return;
+
+        set((state) => {
+          let safeAmount = Number(amount);
+          if (Number.isNaN(safeAmount) || safeAmount < 0) safeAmount = 0;
+          
+          let safeXp = Number(state.xp);
+          if (Number.isNaN(safeXp) || safeXp < 0) safeXp = 0;
+          
+          const MAX_XP = 100000;
+          const newXp = Math.min(MAX_XP, Math.max(0, safeXp + safeAmount));
+          const newLevel = calculateLevelFromXp(newXp);
+          const newRead = articleId ? [...state.readArticles, articleId] : state.readArticles;
+          
+          if (articleId) trackEvent('education_distilled', { articleId, xpGained: amount });
+          
+          return { xp: newXp, level: newLevel, readArticles: newRead };
+        });
+
+        toast.success(`Esencia Destilada`, {
+          description: `+${amount} Esencia extraída de los saberes.`,
+          icon: <Sparkles className="text-oro" size={16} />
+        });
+      },
+      
+      setSelectedDate: (date) => set({ selectedDate: date }),
+
+      toggleHabit: (id, dateStr) => {
+        const { selectedDate, session } = get();
+        const date = dateStr || selectedDate;
+
+        set((state) => {
+          const habit = state.habits.find((h) => h.id === id);
+          if (!habit) return state;
+
+          const isCompleting = !(habit.completedDays && habit.completedDays[date]);
+          trackEvent(isCompleting ? 'habit_completed' : 'habit_uncompleted', { habitName: habit.name });
+
+          
+          const newHabits = state.habits.map((h) => {
+            if (h.id !== id) return h;
+            const newCompletedDays = { ...(h.completedDays || {}) };
+            if (newCompletedDays[date]) {
+              delete newCompletedDays[date];
+            } else {
+              newCompletedDays[date] = true;
+            }
+            return { ...h, completedDays: newCompletedDays, streak: calculateStreak(newCompletedDays) };
+          });
+
+          
+          const updatedHabit = newHabits.find((h) => h.id === id);
+          let xpGainedLocal = 0;
+          if (isCompleting) {
+            const { total } = calculateCompletionXp(XP_ACTIONS.habit_completed, updatedHabit.streak || 0);
+            xpGainedLocal = total;
+
+            
+            const wasAlreadyPerfect = isPerfectDay(state.habits, date);
+            const isNowPerfect = isPerfectDay(newHabits, date);
+            if (!wasAlreadyPerfect && isNowPerfect) {
+              xpGainedLocal += XP_ACTIONS.perfect_day;
+              toast.success('✨ Día Perfecto', {
+                id: 'dia-perfecto',
+                description: `+${XP_ACTIONS.perfect_day} Esencia. Todos los votos sellados.`,
+                icon: <Crown className="text-[var(--color-gold)]" size={16} />,
+              });
+            }
+
+            
+            const phaseName = getStreakPhaseName(updatedHabit.streak || 0);
+            if ([7, 14, 30, 66].includes(updatedHabit.streak)) {
+              toast.success(`⚗️ ${phaseName}`, {
+                description: `Multiplicador de racha activado en ${habit.name}.`,
+              });
+            }
+          } else {
+            
+            
+            xpGainedLocal = calculateEntropyPenalty(updatedHabit.streak || 0);
+            toast.error(`Fluctuación Cuántica`, {
+              id: 'entropia-inercia',
+              description: `Radiación emitida: ${xpGainedLocal} Qubits de Esencia perdidos.`,
+              icon: <Flame className="text-red-500" size={16} />,
+            });
+          }
+
+          let safeLocalXp = Number(xpGainedLocal);
+          if (Number.isNaN(safeLocalXp)) safeLocalXp = 0;
+          
+          let safeXp = Number(state.xp);
+          if (Number.isNaN(safeXp) || safeXp < 0) safeXp = 0;
+          
+          const MAX_XP = 100000;
+          const newXp = Math.min(MAX_XP, Math.max(0, Math.round(safeXp + safeLocalXp)));
+          const newLevel = calculateLevelFromXp(newXp);
+          const maxStreak = newHabits.reduce((max, h) => Math.max(max, h.streak || 0), 0);
+          const newBestStreak = Math.max(state.bestStreak || 0, maxStreak);
+
+          
+          const earnedAch = checkAchievements(newHabits, newBestStreak, state.achievements, achievementsDefinitions);
+          const newAchievements = [...state.achievements];
+          earnedAch.forEach((ach) => {
+            newAchievements.push(ach.id);
+            toast.success('¡Logro Integrado!', { description: ach.name, icon: ach.icon });
+          });
+
+          
+          const allDates = new Set();
+          newHabits.forEach((h) => Object.keys(h.completedDays || {}).forEach((d) => allDates.add(d)));
+          let perfectDaysCount = 0;
+          allDates.forEach((d) => { if (isPerfectDay(newHabits, d)) perfectDaysCount++; });
+
+          return {
+            habits: newHabits,
+            xp: newXp,
+            level: newLevel,
+            achievements: newAchievements,
+            bestStreak: newBestStreak,
+            perfectDaysCount,
+          };
+        });
+
+        
+        const updatedHabit = get().habits.find((h) => h.id === id);
+        get().syncCompletionToDb(id, date, !updatedHabit?.completedDays?.[date]);
+
+        
+        if (session && get().settings.isPublic) {
+          const h = get().habits.find((h) => h.id === id);
+          if (h && h.completedDays?.[date]) {
+            SocialRepository.publishToFeed(session.user.id, 'habit_completed', {
+              habitName: h.name,
+              streak: h.streak || 0,
+              area: h.area || 'Dominio del Ser',
+            });
+          }
+        }
+
+        if (get().settings.notificationsEnabled) {
+          oracle.scheduleHabitReminders(get().habits);
+        }
+        get().evaluateRPGSystem();
+      },
+
+      toggleTheme: () => set((state) => {
+        const nextTheme = state.theme === 'nigredo' ? 'citrinitas' : 'nigredo';
+        if (typeof document !== 'undefined') {
+          document.documentElement.setAttribute('data-theme', nextTheme);
+        }
+        return { theme: nextTheme };
+      }),
+      
+      addHabit: async (name, customData = {}) => {
+        habitSchema.parse({ name });
+        const { session, isOnline } = get();
+        let newId = `tmp-${Date.now()}`;
+        const metadata = customData || {};
+        const operation = { type: 'add_habit', habitId: newId, name, metadata, timestamp: Date.now() };
+
+        if (session && isOnline) {
+          try {
+            const data = await HabitRepository.createHabit(session.user.id, name, metadata);
+            newId = data.id;
+          } catch (err) {
+            set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
+          }
+        } else if (session) {
+          set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
+        }
+
+        set((state) => ({
+          habits: [
+            ...state.habits,
+            { 
+              id: newId, name,
+              area: customData.area || 'Dominio del Ser',
+              description: customData.description || '',
+              method: customData.method || '',
+              icon: customData.icon || null,
+              completedDays: {}, streak: 0 
+            }
+          ]
+        }));
+        get().checkLevelUnlocks();
+      },
+
+      materializeHabit: async (definitionId) => {
+        const { session, isOnline, habits } = get();
+        const definition = habitDefinitions.find(d => d.id === definitionId);
+        if (!definition) return;
+
+        if (habits.find(h => h.name === definition.name)) {
+          toast.error("Proceso ya activo", { description: "Esta intención ya está en tu flujo." });
+          return;
+        }
+
+        let newId = `tmp-${Date.now()}`;
+        const metadata = { 
+          icon: definition.icon, 
+          method: definition.method, 
+          area: definition.area 
+        };
+        const operation = { type: 'add_habit', habitId: newId, name: definition.name, metadata, timestamp: Date.now() };
+
+        
+        set((state) => ({
+          habits: [...state.habits, { 
+            id: newId, 
+            name: definition.name, 
+            ...metadata,
+            completedDays: {}, streak: 0 
+          }]
+        }));
+        toast.success("Gracia Alcanzada", { description: `${definition.name} ha sido añadido a tu obra.` });
+
+        
+        if (session && isOnline) {
+          try {
+             const data = await HabitRepository.createHabit(session.user.id, definition.name, metadata);
+             
+             set((state) => ({
+               habits: state.habits.map(h => h.id === newId ? { ...h, id: data.id } : h)
+             }));
+          } catch (e) {
+             set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
+          }
+        } else if (session) {
+             set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
+        }
+      },
+      
+      updateHabit: (id, updates) => {
+         if (id === 'tutorial-habit') {
+            set((state) => ({
+              habits: state.habits.map((h) => h.id === id ? { ...h, ...updates } : h)
+            }));
+            return;
+         }
+         set((state) => ({
+           habits: state.habits.map((h) => h.id === id ? { ...h, ...updates } : h)
+         }));
+      },
+
+      updateSettings: async (newSettings) => {
+        const { session } = get();
+        set((state) => ({
+          settings: { ...state.settings, ...newSettings }
+        }));
+
+        if (session) {
+          const { error } = await supabase.from('profiles').update({ 
+            settings: { ...get().settings, ...newSettings },
+            display_name: newSettings.displayName || get().settings.displayName,
+            avatar: newSettings.avatar || get().settings.avatar
+          }).eq('id', session.user.id);
+          
+          if (error) console.error("Error sincronizando sintonía:", error);
+        }
+        
+        toast.success("Sintonía Actualizada");
+      },
+      
+      deleteHabit: async (id) => {
+        const { session, isOnline } = get();
+        const operation = { type: 'delete_habit', habitId: id, timestamp: Date.now() };
+
+        
+        set((state) => ({
+          habits: state.habits.filter((h) => h.id !== id)
+        }));
+        toast.success("Proceso Disuelto", { description: "El elemento ha vuelto al vacío." });
+
+        
+        if (session && isOnline && id !== 'tutorial-habit') {
+          try {
+            await HabitRepository.deleteHabit(session.user.id, id);
+          } catch (err) {
+            set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
+          }
+        } else if (session && id !== 'tutorial-habit') {
+          set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
+        }
+      },
+
+      updateHabit: async (id, updates) => {
+        const { session, isOnline } = get();
+        const operation = { type: 'update_habit', habitId: id, updates, timestamp: Date.now() };
+
+        
+        set((state) => ({
+          habits: state.habits.map(h => h.id === id ? { ...h, ...updates } : h)
+        }));
+
+        if (session && isOnline && id !== 'tutorial-habit') {
+          try {
+            await HabitRepository.updateHabit(session.user.id, id, updates);
+          } catch (err) {
+            set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
+          }
+        } else if (session && id !== 'tutorial-habit') {
+          set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
+        }
+      },
+
+      setSession: (session) => set({ session, user: session?.user || null }),
+
+      getHabitData: (name) => {
+        return habitDefinitions.find(h => h.name === name) || { level: 1, coach_education: "Proceso alquímico personalizado." };
+      },
+
+      getDynamicCoachMessage: (habitName, streak) => {
+        const data = habitDefinitions.find(h => h.name === habitName);
+        if (!data) return "La constancia es la base de la transmutación.";
+        
+        if (data.daily_messages && data.daily_messages[streak]) return data.daily_messages[streak];
+
+        if (streak === 0) return data.coach_education;
+        if (streak >= 1 && streak < 3) return `Órbita Lunar: ${data.benefits?.day_1 || 'Tu cuerpo está empezando a notar el cambio'}.`;
+        if (streak >= 3 && streak < 7) return `Ascenso Solar: ${data.benefits?.day_3 || 'La claridad mental aumenta con cada repetición'}.`;
+        if (streak >= 7 && streak < 14) return `Cristalización Estelar: ${data.benefits?.day_7 || 'Tus conexiones neuronales se están solidificando'}.`;
+        if (streak >= 14) return `Fase de Aetheria: Estás transmutando tu realidad permanentemente.`;
+        
+        return data.coach_education;
+      },
+
+      initializeSync: async () => {
+        const { session, processPendingSyncs } = get();
+        if (!session) return;
+        
+        try {
+          
+          await processPendingSyncs();
+
+          identifyUser(session.user.id, { email: session.user.email });
+          trackEvent('app_initialized');
+
+          const { profile, habits: hData, completions } = await HabitRepository.loadUserSystem(session.user.id);
+          
+          if (profile) {
+            set((state) => {
+              const remoteSettings = profile.settings || {};
+              
+              const hasFinishedOnboarding = state.settings.hasFinishedOnboarding || remoteSettings.hasFinishedOnboarding || false;
+              
+              return { 
+                xp: Math.max(state.xp, profile.xp || 0), 
+                level: Math.max(state.level, profile.level || 1), 
+                readArticles: profile.read_articles || [],
+                settings: { 
+                  ...state.settings, 
+                  ...remoteSettings, 
+                  hasFinishedOnboarding,
+                  displayName: profile.display_name || state.settings.displayName,
+                  avatar: profile.avatar || state.settings.avatar
+                }
+              };
+            });
+          }
+
+          const syncedHabits = hData.map(h => {
+             const hComps = completions.filter(c => c.habit_id === h.id);
+             const completedDays = {};
+             
+             hComps.forEach(c => {
+                 const pureDate = c.completed_at.split('T')[0];
+                 completedDays[pureDate] = true;
+             });
+             
+             
+             
+             const definition = habitDefinitions.find(d => d.name === h.name) || {};
+
+             return { 
+                id: h.id, 
+                name: h.name, 
+                completedDays, 
+                streak: calculateStreak(completedDays),
+                definitionId: definition.id || null,
+                icon: definition.icon || "🎇", 
+                method: definition.method || "Refinar la maestría del cuerpo y la mente.",
+                area: definition.area || "Dominio del Ser"
+              };
+          });
+
+          set({ habits: syncedHabits });
+        } catch (err) {
+          console.error("Error en sincronización inicial:", err);
+        }
+      },
+
+      checkLevelUnlocks: () => {
+        const { habits, unlockedLevel, installationDate } = get();
+        const { targetLevel, hasUnlocked } = evaluateLevelUnlock(habits, unlockedLevel, installationDate);
+
+        if (hasUnlocked) {
+          set({ unlockedLevel: targetLevel, showLevelModal: true });
+        }
+      },
+
+      acknowledgeLevelModal: () => {
+        set((state) => ({ showLevelModal: false, lastUnlockedLevelAcknowledged: state.unlockedLevel }));
+      },
+
+      signOut: async () => {
+        const { error } = await supabase.auth.signOut();
+        if (!error) set({ session: null, habits: [], xp: 0, level: 1, unlockedLevel: 1 });
+        return { error };
+      },
+
+      hardResetAccount: async () => {
+        const { session, signOut } = get();
+        if (!session) return;
+        set({ isResetting: true });
+        toast.loading("Purificando el Plomo...", { id: 'reset-toast' });
+
+        try {
+          
+          try {
+            await supabase.from('completions').delete().eq('user_id', session.user.id);
+            await supabase.from('habits').delete().eq('user_id', session.user.id);
+          } catch (e) { console.warn("Error parcial en purificación remota de hábitos/completions"); }
+
+          try {
+            await supabase.from('profiles').update({ 
+              xp: 0, level: 1, read_articles: [],
+              display_name: 'Adept #001', avatar: 'User',
+              settings: { hasFinishedOnboarding: false, displayName: 'Adept #001', avatar: 'User' } 
+            }).eq('id', session.user.id);
+          } catch (e) { console.warn("Error parcial en purificación remota de perfil"); }
+
+          
+          set({ 
+            habits: [], xp: 0, level: 1, unlockedLevel: 1, 
+            achievements: [], readArticles: [], bestStreak: 0,
+            settings: { 
+              ...get().settings, 
+              hasFinishedOnboarding: false, 
+              displayName: 'Adept #001',
+              avatar: 'User'
+            } 
+          });
+          
+          toast.success("Gran Obra Reiniciada", { id: 'reset-toast' });
+          await new Promise(r => setTimeout(r, 1000)); 
+          await signOut();
+          set({ isResetting: false });
+          return true;
+        } catch (e) {
+          console.error("Fallo la calcinación:", e);
+          toast.error("Fallo la calcinación grave", { id: 'reset-toast' });
+          set({ isResetting: false });
+          return false;
+        }
+      },
+
+      giveRespect: async (receiverId) => {
+        const { session, achievements } = get();
+        if (!session || session.user.id === receiverId) return;
+
+        try {
+          await HabitRepository.emitResonance(session.user.id, receiverId);
+          if (!achievements.includes('respect_emitted')) {
+            set({ achievements: [...achievements, 'respect_emitted'] });
+            toast.success("Gracia Alcanzada", { description: "Reflejo Galante" });
+          }
+          toast.success("Reflejo de Respeto Enviado");
+          return true;
+        } catch (err) { return false; }
+      },
+
+      syncCompletionToDb: async (habitId, date, isRemoving) => {
+        const { session, isOnline } = get();
+        if (!session || habitId === 'tutorial-habit') return;
+
+        if (!isOnline) {
+          set(state => ({ pendingSyncs: [...state.pendingSyncs, { type: 'completion', habitId, date, isRemoving, timestamp: Date.now() }] }));
+          return;
+        }
+
+        try {
+          await HabitRepository.syncCompletion(session.user.id, habitId, date, isRemoving);
+        } catch (err) {
+          set(state => ({ pendingSyncs: [...state.pendingSyncs, { type: 'completion', habitId, date, isRemoving, timestamp: Date.now() }] }));
+        }
+      },
+
+      getAdvancedStats: () => {
+        const { habits } = get();
+        if (habits.length === 0) return null;
+        const stats = habits.map(h => ({ name: h.name, completions: Object.keys(h.completedDays || {}).length }));
+        const mostCompleted = stats.reduce((prev, current) => (prev.completions > current.completions) ? prev : current);
+        return { mostCompleted };
+      },
+
+      evaluateRPGSystem: () => {
+        const { habits, settings } = get();
+        if (settings.appMode === 'Libre') return;
+        
+        const newlyUnlocked = habitDefinitions.filter(def => {
+          if (!def.prerequisiteId) return false;
+          const alreadyHas = habits.some(h => h.name === def.name);
+          if (alreadyHas) return false;
+          const prereqDef = habitDefinitions.find(d => d.id === def.prerequisiteId);
+          const h = habits.find(h => h.name === prereqDef.name);
+          return h && (h.streak >= 1 || Object.keys(h.completedDays).length >= 1);
+        });
+        
+        if (newlyUnlocked.length > 0) {
+           toast.success("Nueva Trayectoria Revelada", {
+             description: `Has desbloqueado el acceso a: ${newlyUnlocked.map(h => h.name).join(', ')}.`,
+             icon: <Award size={20} className="text-oro" />
+           });
+        }
+      },
+
+      getAvailableDefinitions: () => {
+        return habitDefinitions;
+      },
+      
+      setTheme: (newTheme) => set({ theme: newTheme }),
+    }),
+    {
+      name: 'transmute-storage',
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error("Corrupción de LocalStorage detectada en Transmute:", error);
+          localStorage.removeItem('transmute-storage');
+        } else {
+          state.setHasHydrated(true);
+        }
+      },
+      partialize: (state) => ({
+        habits: state.habits,
+        xp: state.xp,
+        level: state.level,
+        unlockedLevel: state.unlockedLevel,
+        achievements: state.achievements,
+        readArticles: state.readArticles,
+        bestStreak: state.bestStreak,
+        perfectDaysCount: state.perfectDaysCount,
+        settings: state.settings,
+        theme: state.theme,
+        installationDate: state.installationDate,
+        pendingSyncs: state.pendingSyncs || [],
+      }),
+    }
+  )
+);

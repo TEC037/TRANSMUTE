@@ -15,6 +15,7 @@ import { initAnalytics } from './utils/analytics';
 import ErrorBoundary from './components/ErrorBoundary';
 import BugReportFAB from './components/BugReportFAB';
 import { SystemRepository } from './repositories/SystemRepository';
+import { useStore } from './store/useStore';
 
 
 import { App as CapacitorApp } from '@capacitor/app';

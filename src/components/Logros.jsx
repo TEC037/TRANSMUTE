@@ -179,7 +179,7 @@ function Logros() {
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[5%] left-[10%] w-[80%] h-[80%] bg-blue-500/[0.03] blur-[150px] rounded-full" />
         <div className="absolute bottom-[5%] right-[5%] w-[60%] h-[60%] bg-amber-500/[0.03] blur-[120px] rounded-full" />
-        <div className="absolute inset-0 bg-[url('https:
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]" />
       </div>
 
       <header className="relative z-30 p-8 pt-12 text-center pointer-events-none">

@@ -268,10 +268,15 @@ export const SocialRepository = {
   
   
 
-  /**
-   * Obtiene estadísticas del colectivo para el panel de La Tropa.
-   * @returns {Promise<object>}
-   */
+  async getCollectiveStats() {
+    const [
+      { count: totalUsers },
+      { count: totalCompletions },
+    ] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('completions').select('*', { count: 'exact', head: true }),
+    ]);
+
     return {
       totalUsers: totalUsers || 0,
       totalCompletions: totalCompletions || 0,

@@ -184,7 +184,7 @@ const AppLayout = ({ children }) => {
       <BugReportFAB />
 
       {}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03] mix-blend-overlay z-[999] bg-[url('https:
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] mix-blend-overlay z-[999] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]" />
     </div>
   );
 };

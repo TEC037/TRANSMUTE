@@ -91,7 +91,7 @@ const AlchemyBackground = () => {
     <div className="fixed inset-0 -z-50 overflow-hidden pointer-events-none bg-[var(--bg-porcelain)] transition-colors duration-1000">
       
       {}
-      <svg className="absolute inset-0 w-full h-full opacity-10 blur-[100px]" xmlns="http:
+      <svg className="absolute inset-0 w-full h-full opacity-10 blur-[100px]" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <radialGradient id="gradAtanor" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="var(--color-gold)" />
@@ -101,8 +101,7 @@ const AlchemyBackground = () => {
         <rect width="100%" height="100%" fill="url(#gradAtanor)" className="animate-pulse" />
       </svg>
 
-      {}
-      <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('https:
+      <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]" />
 
       {}
       <canvas 

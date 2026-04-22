@@ -1,0 +1,1 @@
+import{f as e}from"./vendor-BYvlpK8t.js";export{e as LocalNotificationsWeb};

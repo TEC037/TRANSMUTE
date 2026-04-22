@@ -1,0 +1,1 @@
+import{u as e}from"./vendor-BYvlpK8t.js";export{e as SplashScreenWeb};

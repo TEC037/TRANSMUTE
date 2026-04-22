@@ -12,6 +12,7 @@ import { haptics } from '../utils/haptics';
 import { toPng } from 'html-to-image';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 import { ExportManuscriptView } from './ExportManuscriptView';
 import Check       from 'lucide-react/dist/esm/icons/check';
 import OracleInsight from './OracleInsight';
@@ -117,9 +118,18 @@ function AlchemistDashboard() {
           throw new Error("La transmutación produjo un pergamino vacío");
         }
         
-        const canShare = await Share.canShare();
+        const platform = Capacitor.getPlatform();
         
-        if (canShare.value) {
+        // [LÓGICA]: En WEB (PC o Móvil) siempre descargar para evitar bloqueos de "User Gesture"
+        if (platform === 'web') {
+          const link = document.createElement('a');
+          link.download = `Codice-Transmute-${Date.now()}.png`;
+          link.href = dataUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          // [LÓGICA]: En NATIVO (App) usar el sistema de compartición
           try {
             const fileName = `Codice-Transmute-${Date.now()}.png`;
             const base64Data = dataUrl.split(',')[1];
@@ -141,14 +151,6 @@ function AlchemistDashboard() {
               url: dataUrl
             });
           }
-        } else {
-          // Fallback para navegadores de escritorio
-          const link = document.createElement('a');
-          link.download = `Codice-Transmute-${Date.now()}.png`;
-          link.href = dataUrl;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
         }
         
         toast.success("Códice Emanado", { id: 'capture' });

@@ -9,7 +9,7 @@ import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { haptics } from '../utils/haptics';
-import { domToPng } from 'modern-screenshot';
+import { toPng } from 'html-to-image';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { ExportManuscriptView } from './ExportManuscriptView';
@@ -90,16 +90,20 @@ function AlchemistDashboard() {
         toast.loading("Emanando Códice del Ser...", { id: 'capture' });
         
         // Esperar a que las fuentes y estilos se asienten
-        await new Promise(r => setTimeout(r, 800)); 
+        await new Promise(r => setTimeout(r, 1000)); 
         
-        const dataUrl = await domToPng(element, { 
-          quality: 1, 
-          scale: 3,
-          backgroundColor: '#EBE9E4'
+        const dataUrl = await toPng(element, { 
+          cacheBust: true,
+          pixelRatio: 2,
+          backgroundColor: '#EBE9E4',
+          style: {
+            opacity: 1, // Asegurar opacidad durante captura
+            visibility: 'visible'
+          }
         });
 
         if (!dataUrl || dataUrl.length < 100) {
-          throw new Error("Imagen generada vacía");
+          throw new Error("El atanor produjo una imagen vacía");
         }
         
         const canShare = await Share.canShare();

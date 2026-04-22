@@ -1,7 +1,9 @@
 {
   "name": "transmute",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.8.0",
+  "description": "Aplicación avanzada de gestión de hábitos con narrativa alquímica y progresión RPG.",
+  "author": "TEC•LEO",
   "type": "module",
   "scripts": {
     "dev": "vite",

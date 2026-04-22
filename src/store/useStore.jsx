@@ -1,3 +1,9 @@
+/**
+ * ELEMENTO: useStore.jsx
+ * FASE: Beta (Estabilidad Crítica)
+ * PROPÓSITO: Gestión del estado global, persistencia y sincronización de datos de TRANSMUTE.
+ */
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { z } from 'zod';
@@ -23,7 +29,6 @@ import { SocialRepository } from '../repositories/SocialRepository';
 import {
   calculateStreak,
   calculateLevelFromXp,
-  evaluateLevelUnlock,
   checkAchievements,
   isPerfectDay,
 } from '../domain/HabitDomain';
@@ -44,7 +49,6 @@ export const useStore = create(
       user: null,
       session: null,
       habits: [],
-      unlockedLevel: 1,
       selectedDate: (function(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })(),
       xp: 0,
       level: 1,
@@ -52,11 +56,7 @@ export const useStore = create(
       readArticles: [],
       bestStreak: 0,
       perfectDaysCount: 0,         
-      globalGoal: { completed: 0, target: 1000 },
-      showLevelModal: false,
       isOnline: true,
-      lastUnlockedLevelAcknowledged: 1,
-      isSeeding: false,
       theme: 'citrinitas', 
       pulseEvent: { id: 0, x: 0, y: 0 }, 
       triggerPulse: (x, y) => set({ pulseEvent: { id: Date.now(), x, y } }),
@@ -68,9 +68,13 @@ export const useStore = create(
         avatar: 'User',
         isPublic: true,
         hasFinishedOnboarding: false,
-        useDefaultHabits: true,
         isGuidedMode: true,
-        appMode: 'Aventura'
+        appMode: 'Aventura',
+        profiling: {
+          focusArea: 'Mente', // 'Cuerpo' | 'Mente' | 'Espíritu'
+          disciplineLevel: 'Templada', // 'Frágil' | 'Templada' | 'Inquebrantable'
+          ritualFrequency: 'Sutil', // 'Sutil' | 'Intenso' | 'Magistral'
+        }
       },
       installationDate: (function(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })(),
       globalStats: { totalUsers: 0, recentLikes: [], recentCompletions: [] },
@@ -99,16 +103,22 @@ export const useStore = create(
             if (op.type === 'completion') {
               await HabitRepository.syncCompletion(session.user.id, op.habitId, op.date, op.isRemoving);
             } else if (op.type === 'add_habit') {
+              if (!op.name) {
+                console.warn("Saltando sincronización de hábito sin nombre:", op);
+                continue;
+              }
               const h = await HabitRepository.createHabit(session.user.id, op.name, op.metadata);
               
               set(state => ({
                 habits: state.habits.map(hab => hab.id === op.habitId ? { ...hab, id: h.id } : hab)
               }));
             } else if (op.type === 'delete_habit') {
-              
-              
               if (!op.habitId.startsWith('tmp-')) {
                 await HabitRepository.deleteHabit(session.user.id, op.habitId);
+              }
+            } else if (op.type === 'update_habit') {
+              if (!op.habitId.startsWith('tmp-')) {
+                await HabitRepository.updateHabit(session.user.id, op.habitId, op.updates);
               }
             }
           } catch (err) {
@@ -193,33 +203,31 @@ export const useStore = create(
             xpGainedLocal = total;
 
             
+            // [LÓGICA]: Evaluar estado de "Día Perfecto"
             const wasAlreadyPerfect = isPerfectDay(state.habits, date);
             const isNowPerfect = isPerfectDay(newHabits, date);
+            
             if (!wasAlreadyPerfect && isNowPerfect) {
               xpGainedLocal += XP_ACTIONS.perfect_day;
-              toast.success('✨ Día Perfecto', {
-                id: 'dia-perfecto',
-                description: `+${XP_ACTIONS.perfect_day} Esencia. Todos los votos sellados.`,
-                icon: <Crown className="text-[var(--color-gold)]" size={16} />,
-              });
+              toast.success("¡Día Perfecto!", { description: "El Atanor brilla con una pureza absoluta." });
             }
 
-            
             const phaseName = getStreakPhaseName(updatedHabit.streak || 0);
             if ([7, 14, 30, 66].includes(updatedHabit.streak)) {
-              toast.success(`⚗️ ${phaseName}`, {
-                description: `Multiplicador de racha activado en ${habit.name}.`,
-              });
+              toast.success(`${phaseName} alcanzada`, { icon: '🔥' });
             }
           } else {
+            xpGainedLocal = calculateEntropyPenalty(habit.streak || 0);
             
+            // [LÓGICA]: Revertir bono de "Día Perfecto" si se rompe la perfección
+            const wasPerfect = isPerfectDay(state.habits, date);
+            const isNowPerfect = isPerfectDay(newHabits, date);
             
-            xpGainedLocal = calculateEntropyPenalty(updatedHabit.streak || 0);
-            toast.error(`Fluctuación Cuántica`, {
-              id: 'entropia-inercia',
-              description: `Radiación emitida: ${xpGainedLocal} Qubits de Esencia perdidos.`,
-              icon: <Flame className="text-red-500" size={16} />,
-            });
+            if (wasPerfect && !isNowPerfect) {
+              xpGainedLocal -= XP_ACTIONS.perfect_day;
+            }
+            
+            toast.error("Racha interrumpida", { description: "La entropía gana terreno." });
           }
 
           let safeLocalXp = Number(xpGainedLocal);
@@ -239,7 +247,10 @@ export const useStore = create(
           const newAchievements = [...state.achievements];
           earnedAch.forEach((ach) => {
             newAchievements.push(ach.id);
-            toast.success('¡Logro Integrado!', { description: ach.name, icon: ach.icon });
+            toast.success('¡Eón Sincronizado!', { 
+              description: `Logro desbloqueado: ${ach.name}`, 
+              icon: ach.icon 
+            });
           });
 
           
@@ -288,11 +299,13 @@ export const useStore = create(
         return { theme: nextTheme };
       }),
       
-      addHabit: async (name, customData = {}) => {
+      addHabit: async (definition, customData = {}) => {
+        const name = typeof definition === 'object' ? definition.name : definition;
+        const metadata = typeof definition === 'object' ? { ...definition, ...customData } : customData;
+        
         habitSchema.parse({ name });
         const { session, isOnline } = get();
         let newId = `tmp-${Date.now()}`;
-        const metadata = customData || {};
         const operation = { type: 'add_habit', habitId: newId, name, metadata, timestamp: Date.now() };
 
         if (session && isOnline) {
@@ -311,15 +324,14 @@ export const useStore = create(
             ...state.habits,
             { 
               id: newId, name,
-              area: customData.area || 'Dominio del Ser',
-              description: customData.description || '',
-              method: customData.method || '',
-              icon: customData.icon || null,
+              area: metadata.area || 'Dominio del Ser',
+              description: metadata.description || '',
+              method: metadata.method || '',
+              icon: metadata.icon || 'diamond',
               completedDays: {}, streak: 0 
             }
           ]
         }));
-        get().checkLevelUnlocks();
       },
 
       materializeHabit: async (definitionId) => {
@@ -366,18 +378,6 @@ export const useStore = create(
              set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
         }
       },
-      
-      updateHabit: (id, updates) => {
-         if (id === 'tutorial-habit') {
-            set((state) => ({
-              habits: state.habits.map((h) => h.id === id ? { ...h, ...updates } : h)
-            }));
-            return;
-         }
-         set((state) => ({
-           habits: state.habits.map((h) => h.id === id ? { ...h, ...updates } : h)
-         }));
-      },
 
       updateSettings: async (newSettings) => {
         const { session } = get();
@@ -409,13 +409,13 @@ export const useStore = create(
         toast.success("Proceso Disuelto", { description: "El elemento ha vuelto al vacío." });
 
         
-        if (session && isOnline && id !== 'tutorial-habit') {
+        if (session && isOnline && id !== 'tutorial-habit' && !id.toString().startsWith('tmp-')) {
           try {
             await HabitRepository.deleteHabit(session.user.id, id);
           } catch (err) {
             set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
           }
-        } else if (session && id !== 'tutorial-habit') {
+        } else if (session && id !== 'tutorial-habit' && !id.toString().startsWith('tmp-')) {
           set(state => ({ pendingSyncs: [...state.pendingSyncs, operation] }));
         }
       },
@@ -513,10 +513,11 @@ export const useStore = create(
                 name: h.name, 
                 completedDays, 
                 streak: calculateStreak(completedDays),
-                definitionId: definition.id || null,
-                icon: definition.icon || "🎇", 
-                method: definition.method || "Refinar la maestría del cuerpo y la mente.",
-                area: definition.area || "Dominio del Ser"
+                definitionId: h.definition_id || definition.id || null,
+                icon: h.icon || definition.icon || "diamond", 
+                method: h.method || definition.method || "",
+                description: h.description || definition.description || "",
+                area: h.area || definition.area || "Dominio del Ser"
               };
           });
 
@@ -526,22 +527,9 @@ export const useStore = create(
         }
       },
 
-      checkLevelUnlocks: () => {
-        const { habits, unlockedLevel, installationDate } = get();
-        const { targetLevel, hasUnlocked } = evaluateLevelUnlock(habits, unlockedLevel, installationDate);
-
-        if (hasUnlocked) {
-          set({ unlockedLevel: targetLevel, showLevelModal: true });
-        }
-      },
-
-      acknowledgeLevelModal: () => {
-        set((state) => ({ showLevelModal: false, lastUnlockedLevelAcknowledged: state.unlockedLevel }));
-      },
-
       signOut: async () => {
         const { error } = await supabase.auth.signOut();
-        if (!error) set({ session: null, habits: [], xp: 0, level: 1, unlockedLevel: 1 });
+        if (!error) set({ session: null, habits: [], xp: 0, level: 1 });
         return { error };
       },
 
@@ -552,11 +540,11 @@ export const useStore = create(
         toast.loading("Purificando el Plomo...", { id: 'reset-toast' });
 
         try {
-          
+          // [ACCIÓN]: Limpieza de datos en Supabase
           try {
             await supabase.from('completions').delete().eq('user_id', session.user.id);
             await supabase.from('habits').delete().eq('user_id', session.user.id);
-          } catch (e) { console.warn("Error parcial en purificación remota de hábitos/completions"); }
+          } catch (e) { console.warn("Fallo en limpieza remota de hábitos"); }
 
           try {
             await supabase.from('profiles').update({ 
@@ -564,11 +552,11 @@ export const useStore = create(
               display_name: 'Adept #001', avatar: 'User',
               settings: { hasFinishedOnboarding: false, displayName: 'Adept #001', avatar: 'User' } 
             }).eq('id', session.user.id);
-          } catch (e) { console.warn("Error parcial en purificación remota de perfil"); }
+          } catch (e) { console.warn("Fallo en limpieza remota de perfil"); }
 
-          
+          // [ACCIÓN]: Reset de estado local
           set({ 
-            habits: [], xp: 0, level: 1, unlockedLevel: 1, 
+            habits: [], xp: 0, level: 1, 
             achievements: [], readArticles: [], bestStreak: 0,
             settings: { 
               ...get().settings, 
@@ -652,7 +640,8 @@ export const useStore = create(
       },
 
       getAvailableDefinitions: () => {
-        return habitDefinitions;
+        const { habits } = get();
+        return habitDefinitions.filter(def => !habits.some(h => h.name === def.name));
       },
       
       setTheme: (newTheme) => set({ theme: newTheme }),
@@ -671,7 +660,6 @@ export const useStore = create(
         habits: state.habits,
         xp: state.xp,
         level: state.level,
-        unlockedLevel: state.unlockedLevel,
         achievements: state.achievements,
         readArticles: state.readArticles,
         bestStreak: state.bestStreak,

@@ -8,12 +8,13 @@ const Logros     = React.lazy(() => import('./components/Logros'));
 const Conclave   = React.lazy(() => import('./components/Conclave'));
 const Ajustes    = React.lazy(() => import('./components/Ajustes'));
 const Auth       = React.lazy(() => import('./components/Auth'));
-const Onboarding = React.lazy(() => import('./components/Onboarding'));
+const Onboarding = React.lazy(() => import('./components/ForgeOnboarding'));
 import AppLayout from './components/AppLayout';
 import { supabase } from './lib/supabase';
 import { initAnalytics } from './utils/analytics';
 import ErrorBoundary from './components/ErrorBoundary';
 import BugReportFAB from './components/BugReportFAB';
+import ScrollToTop from './components/ScrollToTop';
 import { SystemRepository } from './repositories/SystemRepository';
 import { useStore } from './store/useStore';
 
@@ -25,33 +26,24 @@ import { SplashScreen } from '@capacitor/splash-screen';
 function App() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { session, setSession, initializeSync, settings, isSessionLoading } = useStore();
+  const { session, setSession, initializeSync, settings, isSessionLoading, isResetting } = useStore();
 
-  
   useEffect(() => {
     initAnalytics();
-
-    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       setSession(newSession);
       if (newSession) {
         initializeSync();
-        // Inicialización beta opcional
         SystemRepository.initializeApp(newSession.user.id).catch(e => console.error("Error init:", e));
       }
     });
-
     return () => subscription.unsubscribe();
   }, [setSession, initializeSync]);
 
-  
   useEffect(() => {
-    
     if (!isSessionLoading) {
       SplashScreen.hide().catch(() => {});
     }
-
-    
     const setupStatusBar = async () => {
       try {
         await StatusBar.setStyle({ style: Style.Default });
@@ -59,23 +51,19 @@ function App() {
       } catch (e) {  }
     };
     setupStatusBar();
-
-    
     const urlListener = CapacitorApp.addListener('appUrlOpen', ({ url }) => {
       if (url.includes('com.transmute.app')) {
         const slug = url.split('.app').pop();
         if (slug) navigate(slug);
       }
     });
-
     return () => {
       urlListener.then(l => l.remove());
     };
   }, [isSessionLoading, navigate]);
 
-  
   useEffect(() => {
-    if (session && settings && !isSessionLoading) {
+    if (session && settings && !isSessionLoading && !isResetting) {
       const hasFinished = settings.hasFinishedOnboarding === true;
       const isConfigPath = location.pathname === '/onboarding';
 
@@ -85,9 +73,22 @@ function App() {
         navigate('/', { replace: true });
       }
     }
-  }, [session, settings?.hasFinishedOnboarding, location.pathname, navigate, isSessionLoading]);
+  }, [session, settings?.hasFinishedOnboarding, location.pathname, navigate, isSessionLoading, isResetting]);
 
-  if (!session && !isSessionLoading) return <Auth />;
+  // PROTECCIÓN ABSOLUTA: Si no hay sesión o se está reiniciando, solo existe Auth
+  if ((!isSessionLoading && !session) || isResetting) return <Auth />;
+
+  // Si está cargando sesión o no hay settings todavía, mostrar splash
+  if (isSessionLoading || (session && !settings)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-porcelain)]">
+        <div className="flex flex-col items-center gap-8">
+          <div className="w-12 h-12 border border-black/5 border-t-[var(--color-gold)] rounded-none animate-spin" />
+          <span className="text-[10px] font-black uppercase tracking-[0.5em] opacity-20 animate-pulse font-serif">Sintonizando Realidad</span>
+        </div>
+      </div>
+    );
+  }
 
   
   const isFullscreenPage = location.pathname === '/onboarding' || location.pathname === '/auth';
@@ -125,6 +126,7 @@ function App() {
   return (
     <div className="min-h-screen bg-[var(--bg-porcelain)] text-[var(--color-midnight)] selection:bg-[var(--color-gold)] selection:text-white">
       <ErrorBoundary>
+        <ScrollToTop />
         {isFullscreenPage ? AppContent : <AppLayout>{AppContent}</AppLayout>}
         
         {}

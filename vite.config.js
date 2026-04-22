@@ -70,6 +70,22 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@supabase')) return 'supabase-vendor';
+            if (id.includes('framer-motion')) return 'framer-vendor';
+            if (id.includes('lucide-react')) return 'lucide-vendor';
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) return 'react-vendor';
+            return 'vendor';
+          }
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

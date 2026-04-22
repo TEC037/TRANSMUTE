@@ -1,7 +1,7 @@
 /**
- * XPDomain.js — EL GRAN CANON DE LA TRANSMUTACIÓN
- * Sistema de progresión basado en los 7 estadios de la Alquimia Espiritual.
- * Del Plomo (Ego) al Oro (Ser). — [CONSISTENCIA ALQUÍMICA v4.2.1]
+ * ELEMENTO: XPDomain.js
+ * FASE: Beta (Estabilidad Crítica)
+ * PROPÓSITO: Definición de valores de XP, penalizaciones por entropía y progresión de niveles.
  */
 
 export const XP_ACTIONS = {
@@ -52,8 +52,7 @@ export const getStreakMultiplier = (streak) => {
 };
 
 /**
- * RESTAURACIÓN DE EXPORT FALTANTE
- * Necesario para HabitCard y otros componentes.
+ * [ACCIÓN]: Obtener nombre de fase según racha.
  */
 export const getStreakPhaseName = (streak) => {
   if (streak >= 66) return 'Opus Absolutus';

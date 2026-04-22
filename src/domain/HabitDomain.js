@@ -1,10 +1,7 @@
 /**
- * HabitDomain.js — LAS LEYES UNIVERSALES
- * Funciones puras que definen las reglas de transmutación y evolución.
- * Sin dependencias de UI o infraestructura.
- *
- * NOTA: calculateLevelFromXp se re-exporta desde XPDomain para mantener
- * compatibilidad hacia atrás con todas las importaciones existentes.
+ * ELEMENTO: HabitDomain.js
+ * FASE: Beta (Estabilidad Crítica)
+ * PROPÓSITO: Funciones puras que definen las reglas de cálculo, rachas y logros de los hábitos.
  */
 
 
@@ -39,36 +36,7 @@ export const calculateStreak = (completedDays) => {
   return streak;
 };
 
-/**
- * Evalúa si se cumplen condiciones para desbloquear nuevos niveles de consciencia.
- * Usado para el sistema de LevelUnlockOverlay existente (sin relación con las fases XP).
- * @param {Array} habits
- * @param {number} currentUnlockedLevel
- * @param {string} installationDate
- * @returns {{ targetLevel: number, hasUnlocked: boolean }}
- */
-export const evaluateLevelUnlock = (habits, currentUnlockedLevel, installationDate) => {
-  const start = new Date(installationDate);
-  const now = new Date();
-  const daysSinceStart = Math.max(1, Math.ceil((now - start) / (1000 * 60 * 60 * 24)));
 
-  const totalCompletions = habits.reduce(
-    (acc, h) => acc + Object.keys(h.completedDays || {}).length,
-    0
-  );
-  const possibleCompletions = habits.length * daysSinceStart;
-  const successRate = possibleCompletions > 0 ? totalCompletions / possibleCompletions : 0;
-
-  let targetLevel = currentUnlockedLevel;
-
-  
-  if (currentUnlockedLevel === 1 && daysSinceStart >= 30 && successRate >= 0.8) targetLevel = 2;
-  else if (currentUnlockedLevel === 2 && daysSinceStart >= 60 && successRate >= 0.8) targetLevel = 3;
-  else if (currentUnlockedLevel === 3 && daysSinceStart >= 90 && successRate >= 0.8) targetLevel = 4;
-  else if (currentUnlockedLevel === 4 && daysSinceStart >= 120 && successRate >= 0.8) targetLevel = 5;
-
-  return { targetLevel, hasUnlocked: targetLevel > currentUnlockedLevel };
-};
 
 /**
  * Verifica si se han desbloqueado logros nuevos.

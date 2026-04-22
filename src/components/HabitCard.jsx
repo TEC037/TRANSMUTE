@@ -17,12 +17,13 @@ import {
   DrawerTrigger,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { toast } from 'sonner';
 
 
 /**
- * HabitCard v5.0: NODO DEL SENDERO ALQUÍMICO (Duolingo Style)
- * - El hábito es un obstáculo interactivo 3D en el sendero.
- * - La metadata es una placa explicativa adyacente.
+ * ELEMENTO: HabitCard.jsx
+ * FASE: Beta (Estabilidad Crítica)
+ * PROPÓSITO: Representación individual de cada hábito con controles de ejecución y edición rápida.
  */
 const HabitCard = React.memo(({ habit, selectedDate }) => {
   const toggleHabit = useStore((state) => state.toggleHabit);
@@ -41,7 +42,6 @@ const HabitCard = React.memo(({ habit, selectedDate }) => {
   const [editedMethod, setEditedMethod] = React.useState(habit.method || '');
   const [editedIcon, setEditedIcon] = React.useState(habit.icon);
   const [showIconPicker, setShowIconPicker] = React.useState(false);
-  const [visibleIcons, setVisibleIcons] = React.useState(20);
 
   
   React.useEffect(() => {
@@ -58,15 +58,6 @@ const HabitCard = React.memo(({ habit, selectedDate }) => {
 
   const { level, progress } = getLevelProgress(xp);
   const phase = getAlchemicalPhase(level);
-  
-  const phaseColors = {
-    nigredo: { primary: '#475569', light: '#47556922', text: '#1e293b' }, 
-    albedo: { primary: '#94A3B8', light: '#94A3B833', text: '#475569' }, 
-    citrinitas: { primary: '#fbbf24', light: '#fbbf2433', text: '#92400e' }, 
-    rubedo: { primary: '#ef4444', light: '#ef444433', text: '#7f1d1d' }  
-  };
-  
-  const currentColors = phaseColors[phase.id] || phaseColors.nigredo;
 
   const handleToggle = (e) => {
     e.stopPropagation();
@@ -91,6 +82,7 @@ const HabitCard = React.memo(({ habit, selectedDate }) => {
     setIsDrawerOpen(false); 
     setTimeout(() => {
       deleteHabit(habit.id);
+      toast.error("Hábito Calcinado", { description: "El elemento ha vuelto al vacío.", icon: '🔥' });
     }, 600);
   };
 
@@ -203,87 +195,71 @@ const HabitCard = React.memo(({ habit, selectedDate }) => {
                  </div>
               </div>
             </div>
-          </DrawerTrigger>
-
-          <DrawerContent aria-describedby={undefined} className="bg-[var(--bg-porcelain)] border-t border-black/10 text-[var(--color-midnight)] h-fit max-h-[92vh] outline-none rounded-none backdrop-blur-3xl p-6 md:p-12 pb-12 overflow-y-auto">
+          </DrawerTrigger>          <DrawerContent aria-describedby={undefined} className="bg-[var(--bg-porcelain)] border-t border-[var(--color-gold)]/20 text-[var(--color-midnight)] h-fit max-h-[88vh] shadow-[0_-20px_60px_rgba(0,0,0,0.8)] outline-none rounded-t-[3rem] p-4 md:p-10 pb-12 overflow-y-auto custom-scrollbar">
              <DrawerTitle className="sr-only">Ajustes de {habit.name}</DrawerTitle>
-             <div className="max-w-xl mx-auto w-full flex flex-col gap-6 text-center">
+             <div className="max-w-lg mx-auto w-full flex flex-col gap-8">
              
              {(() => {
                 const level = calculateLevelFromXp(xp);
                 const phase = getAlchemicalPhase(level);
                 const rank = getAlchemicalRank(level);
                 const phaseColors = {
-                  nigredo: '#333333',
+                  nigredo: '#60a5fa',
                   albedo: '#94A3B8',
                   citrinitas: 'var(--color-gold)',
                   rubedo: '#EF4444'
                 };
                 
-                const evolvedTitle = evolveHabitTitle(habit, habitDefinitions);
                 const activeColor = phaseColors[phase.id] || 'var(--color-gold)';
 
                 return (
-                  <div className="flex flex-col gap-6">
-                    {}
-                    <div className="flex flex-col items-center gap-4">
-                       <div className="relative">
-                          <div 
-                            className="w-20 h-20 glass-card rounded-[28px] flex items-center justify-center shadow-xl transition-all duration-1000"
-                            style={{ color: activeColor, boxShadow: `0 10px 30px -10px ${activeColor}44` }}
-                          >
-                            {resolveHabitIcon(editedIcon, 'w-10 h-10')}
-                          </div>
-                          <button 
-                            onClick={() => { setShowIconPicker(!showIconPicker); haptics.impactLight(); }}
-                            className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-[var(--bg-porcelain)] transition-all ${
-                              showIconPicker 
-                                ? 'bg-[var(--color-gold)] text-[var(--color-midnight)] scale-110' 
-                                : 'bg-[var(--color-midnight)] text-[var(--bg-porcelain)]'
-                            }`}
-                          >
-                            {showIconPicker ? <Check size={14} strokeWidth={3} /> : <Plus size={14} />}
-                          </button>
-                       </div>
-                       <div className="flex flex-col gap-1">
-                         <span className="text-[10px] font-sans font-black uppercase tracking-[0.2em] opacity-60">Grado Actual</span>
-                         <span 
-                           className="text-xs font-black uppercase tracking-widest transition-colors duration-1000"
-                           style={{ color: activeColor }}
-                         >
-                           {phase.name}: {rank.title}
-                         </span>
-                       </div>
-                    </div>
+                  <div className="flex flex-col items-center gap-6 mt-4">
+                     <div className="relative">
+                        <div 
+                          className="w-24 h-24 bg-white/5 rounded-[32px] flex items-center justify-center shadow-2xl border border-white/10"
+                          style={{ color: activeColor }}
+                        >
+                          {resolveHabitIcon(editedIcon, 'w-12 h-12')}
+                        </div>
+                        <button 
+                          onClick={() => { setShowIconPicker(!showIconPicker); haptics.impactLight(); }}
+                          className={`absolute -bottom-2 -right-2 w-10 h-10 rounded-full flex items-center justify-center shadow-2xl border-2 border-[var(--color-midnight)] transition-all ${
+                            showIconPicker 
+                              ? 'bg-[var(--color-gold)] text-[var(--color-midnight)] scale-110' 
+                              : 'bg-[var(--color-midnight)] text-[var(--bg-porcelain)]'
+                          }`}
+                        >
+                          {showIconPicker ? <Check size={16} strokeWidth={3} /> : <Plus size={16} />}
+                        </button>
+                     </div>
+                     <div className="text-center">
+                       <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 block mb-1">Rango del Adepto</span>
+                       <span className="text-sm font-black uppercase tracking-widest" style={{ color: activeColor }}>
+                         {phase.name} · {rank.title}
+                       </span>
+                     </div>
                   </div>
                 );
              })()}
 
-                {}
                 <AnimatePresence>
                   {showIconPicker && (
                     <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden bg-black/5 rounded-2xl p-4"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="bg-white/5 rounded-[32px] p-6 border border-white/5"
                     >
-                      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 snap-x"
-                           onScroll={(e) => {
-                             const target = e.target;
-                             if (target.scrollLeft + target.clientWidth >= target.scrollWidth - 50) {
-                               if (visibleIcons < HABIT_ICONS.length) setVisibleIcons(prev => prev + 12);
-                             }
-                           }}>
-                        {HABIT_ICONS.slice(0, visibleIcons).map((icon) => (
+                      <div className="grid grid-cols-4 md:grid-cols-6 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                        {HABIT_ICONS.map((icon) => (
                           <button
                             key={icon.key}
                             onClick={() => { setEditedIcon(icon.key); haptics.impactLight(); }}
-                            className={`flex flex-col items-center justify-center min-w-[50px] h-[50px] rounded-xl transition-all ${
-                              editedIcon === icon.key ? 'bg-[var(--color-midnight)] text-white scale-110' : 'glass-card opacity-40 hover:opacity-100'
+                            className={`flex flex-col items-center justify-center h-14 rounded-2xl transition-all ${
+                              editedIcon === icon.key ? 'bg-[var(--color-gold)] text-[var(--color-midnight)]' : 'bg-white/5 opacity-40 hover:opacity-100 hover:bg-white/10'
                             }`}
                           >
-                            <icon.Component size={18} strokeWidth={1.5} />
+                            <icon.Component size={20} strokeWidth={1.5} />
                           </button>
                         ))}
                       </div>
@@ -291,78 +267,61 @@ const HabitCard = React.memo(({ habit, selectedDate }) => {
                   )}
                 </AnimatePresence>
 
-                {}
-                <div className="flex flex-col gap-2">
-                   <label className="text-[11px] font-sans font-black uppercase tracking-widest opacity-60 text-left">
-                     {isGuidedMode || habit.definitionId ? 'Disciplina Inmutable' : 'Nombre de la Materia'}
-                   </label>
-                   {isGuidedMode || habit.definitionId ? (
-                      <div className="w-full py-4 text-3xl font-serif font-black uppercase tracking-tight text-center border-b-2 border-black/5 opacity-80">
-                         {evolveHabitTitle(habit, habitDefinitions)}
-                      </div>
-                   ) : (
-                      <input 
+                <div className="space-y-8">
+                  <div className="flex flex-col gap-2">
+                     <label className="text-[10px] font-black uppercase tracking-widest opacity-30 text-left px-1">Materia Prima</label>
+                     <input 
                         type="text" 
                         value={editedName}
                         onChange={(e) => setEditedName(e.target.value)}
-                        className="w-full bg-transparent border-b-2 border-black/10 focus:border-[var(--color-gold)] outline-none py-2 text-3xl font-serif font-black uppercase tracking-tight text-center"
-                        placeholder="Transmutar nombre..."
+                        disabled={isGuidedMode && habit.definitionId}
+                        className="w-full bg-transparent border-b-2 border-white/10 focus:border-[var(--color-gold)] outline-none py-4 text-3xl font-serif font-black uppercase tracking-tight transition-all disabled:opacity-30"
+                        placeholder="Nombre de la esencia..."
                       />
-                   )}
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                     <label className="text-[10px] font-black uppercase tracking-widest opacity-30 text-left px-1">Fórmula de Transmutación</label>
+                     <textarea 
+                        value={editedMethod}
+                        onChange={(e) => setEditedMethod(e.target.value)}
+                        placeholder="Define el método de esta transmutación..."
+                        rows={2}
+                        className="w-full bg-transparent border-b border-white/10 focus:border-[var(--color-gold)] outline-none py-2 text-sm font-serif italic transition-all resize-none"
+                     />
+                  </div>
                 </div>
                 
-                <div className="flex flex-col gap-2">
-                   <label className="text-[11px] font-sans font-black uppercase tracking-widest opacity-60 text-left">Descripción de la Materia</label>
-                   <textarea 
-                      value={editedMethod}
-                      onChange={(e) => setEditedMethod(e.target.value)}
-                      placeholder="Define el método de esta transmutación..."
-                      className="w-full bg-transparent border-b border-black/10 focus:border-[var(--color-gold)] outline-none py-2 text-sm font-serif italic text-center resize-none min-h-[60px]"
-                   />
-                </div>
-                
-                <div className="flex flex-col gap-4 mt-6">
+                <div className="flex flex-col gap-6 pt-4">
                    <div className="flex gap-4">
                       {(!isGuidedMode || !habit.definitionId) && (
                         <button 
-                          onClick={() => {
-                            haptics.impactHeavy();
-                            handleCalcination();
-                          }}
-                          className="flex-1 h-14 bg-red-500/10 text-red-500 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95"
+                          onClick={handleCalcination}
+                          className="flex-1 h-16 bg-red-500/10 text-red-500 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-red-500 hover:text-white transition-all active:scale-95 border border-red-500/20"
                         >
-                          Calcinar Hábito
+                          Calcinar
                         </button>
                       )}
                       
                       <button 
                         onClick={() => {
-                          if (!isGuidedMode || !habit.definitionId) {
-                            updateHabit(habit.id, { 
-                              name: editedName, 
-                              icon: editedIcon,
-                              method: editedMethod 
-                            });
-                            toast.success("Transmutación Consolidada");
-                          }
+                          updateHabit(habit.id, { 
+                            name: editedName, 
+                            icon: editedIcon,
+                            method: editedMethod 
+                          });
                           setIsDrawerOpen(false);
+                          haptics.notificationSuccess();
                         }}
-                        className="flex-[2] h-14 bg-[var(--color-midnight)] text-[var(--bg-porcelain)] rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-[var(--color-gold)] transition-all shadow-xl active:scale-95"
+                        className="flex-[2] h-16 bg-[var(--color-gold)] text-[var(--color-midnight)] rounded-xl font-black uppercase tracking-[0.4em] text-[11px] shadow-2xl active:scale-95 transition-all"
                       >
-                        {isGuidedMode && habit.definitionId ? 'Cerrar Registro' : 'Fijar Transmutación'}
+                        Fijar Esencia
                       </button>
                    </div>
                    
-                   <p className="text-[11px] font-serif opacity-40 italic">
-                      "Nada es estático. Este registro es el proceso continuo donde el sacrificio de la forma original es el requisito para una nueva naturaleza."
+                   <p className="text-[10px] font-serif opacity-30 italic text-center leading-relaxed px-4">
+                      "La forma debe morir para que la esencia nazca. Cada ajuste es un paso hacia la perfección de la Gran Obra."
                    </p>
-
-                   {(!isGuidedMode || !habit.definitionId) && (
-                     <div className="bg-red-900/5 p-4 text-left rounded-xl mt-4">
-                        <span className="text-[10px] font-sans font-black uppercase tracking-widest text-red-600 block mb-1">Zona de Calcinación</span>
-                        <p className="text-[11px] font-serif opacity-60 leading-relaxed italic">Destruir esta forma generará una cascada de entropía extrema. No se podrá recuperar el historial de este nodo.</p>
-                     </div>
-                   )}
                 </div>
              </div>
           </DrawerContent>

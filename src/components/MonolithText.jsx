@@ -13,13 +13,13 @@ import { motion } from 'framer-motion';
 function MonolithText({ text, isActive = false, className = '' }) {
   return (
     <motion.span
-      animate={isActive ? { opacity: 1 } : { opacity: 0.25 }}
+      animate={isActive ? { opacity: 1 } : { opacity: 0.5 }}
       transition={{ duration: 0.4 }}
       className={`
         font-black font-serif tracking-tighter uppercase leading-none
         ${isActive
           ? 'text-[var(--color-midnight)]'
-          : 'text-[var(--color-midnight)] opacity-25'
+          : 'text-[var(--color-midnight)] opacity-30'
         }
         ${className}
       `}

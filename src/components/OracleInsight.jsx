@@ -19,85 +19,77 @@ import { getRango } from '../domain/InvocadorSystem';
 
 
 const OBSERVACIONES = [
-  
+  // ESTADO VACÍO (RETO INICIAL)
   {
     id: 'vacio',
     condicion: (s) => s.habitCount === 0,
     nivel: 'Estado: Latente',
-    texto: 'El sistema no tiene entradas. Sin datos de comportamiento, no hay nada que analizar ni que optimizar. El primer hábito es el único que requiere decisión pura — los siguientes se apoyan en la inercia del anterior.',
+    texto: 'El Atanor está frío. He visto a miles llegar con promesas de grandeza y terminar reducidos a cenizas. ¿De verdad crees tener la voluntad necesaria para materializar tu primer ritual, o solo estás de paso?',
   },
 
-  
+  // INICIO DE CICLO
   {
     id: 'inicio',
     condicion: (s) => s.habitCount > 0 && s.maxStreak === 0,
-    nivel: 'Fase: Inicio de ciclo',
-    texto: 'Día cero. La neuroplasticidad funciona por repetición espaciada: el primer registro activa la ruta, la repetición la fortalece. El sistema espera tus primeros datos.',
+    nivel: 'Fase: Ignición',
+    texto: 'Primeros pasos. Sellar el ritual es la parte fácil; mantener el fuego es la verdadera alquimia. El sistema espera tu primer registro... demuéstrame que no eres un simple recolector de intenciones.',
   },
 
-  
+  // DÍA PERFECTO (RETO AL EGO)
   {
     id: 'dia_perfecto',
     condicion: (s) => s.hasPerfectDay,
-    nivel: 'Coherencia: Máxima',
-    texto: 'Todos los hábitos completados. En términos de aprendizaje por refuerzo, este es el estado que el sistema intenta replicar: dolor cero de incumplimiento, máxima liberación de dopamina por cierre de bucle. Bien ejecutado.',
+    nivel: 'Coherencia: Oro Puro',
+    texto: 'Todos los rituales completados. Has logrado que la materia y el espíritu dancen en armonía hoy. Pero no te envanezcas; el ego es la antesala de la caída. ¿Podrás repetirlo mañana o fue solo un destello de suerte?',
   },
 
-  
+  // RACHA INICIAL (RETO DE MARTY MCFLY)
   {
     id: 'racha_baja',
     condicion: (s) => s.maxStreak >= 3 && s.maxStreak < 7,
-    nivel: 'Consolidación: Inicial',
-    texto: `Racha de ${'{streak}'} días. La investigación de Phillippa Lally (UCL) muestra que los hábitos toman entre 18 y 254 días en automatizarse, con 66 como mediana. Tres días es suficiente para establecer la señal —todavía no para estabilizarla.`,
+    nivel: 'Consolidación: Cristal',
+    texto: `Racha de ${'{streak}'} soles. Un hilo de luz bonito, pero frágil como el cristal. Apostaría mi esencia a que no durarás hasta el Ocaso de la semana. ¿Te atreves a hacerme perder la apuesta?`,
     valor: (s) => `${s.maxStreak}`,
   },
 
-  
+  // RACHA SEMANA (RECONOCIMIENTO + DUDA)
   {
     id: 'racha_semana',
     condicion: (s) => s.maxStreak >= 7 && s.maxStreak < 14,
-    nivel: 'Consolidación: Activa',
-    texto: 'Una semana de datos consistentes. El loop hábito ya tiene estructura: señal → rutina → recompensa. La consistencia a esta escala empieza a reducir la carga cognitiva de la decisión. Cada repetición hace el siguiente ciclo más barato en términos de fuerza de voluntad.',
+    nivel: 'Consolidación: Hierro',
+    texto: 'Una semana de fuego ininterrumpido. Admitiré que me has sorprendido, pero los 14 días son donde la mayoría se quiebra por su propia complacencia. No te confíes.',
   },
 
-  
+  // RACHA CATORCE (RESPECT)
   {
     id: 'racha_catorce',
-    condicion: (s) => s.maxStreak >= 14 && s.maxStreak < 21,
-    nivel: 'Consolidación: Avanzada',
-    texto: 'Dos semanas de ejecución sostenida. El sistema nervioso autónomo empieza a anticipar la rutina antes de que la conciencia la active. Esto no es metáfora: es el efecto real de la mielinización de rutas usadas con frecuencia.',
+    condicion: (s) => s.maxStreak >= 14 && s.maxStreak < 28,
+    nivel: 'Consolidación: Acero Alquímico',
+    texto: 'Dos semanas. Tu vibración empieza a alterar la realidad del Atanor. Ya no haces el hábito; el hábito te está forjando a ti. Sigue así, si es que tus nervios lo soportan.',
   },
 
-  
-  {
-    id: 'racha_veintiuno',
-    condicion: (s) => s.maxStreak >= 21 && s.maxStreak < 30,
-    nivel: 'Automatización: Parcial',
-    texto: '21 días es un mito popular — pero el mecanismo es real. A estas alturas, la ruta neural tiene suficiente refuerzo como para persistir sin supervisión constante. La decisión de ejecutar ya no consume el mismo nivel de recursos prefrontales del día uno.',
-  },
-
-  
+  // RACHA MES (MESTRÍA)
   {
     id: 'racha_mes',
-    condicion: (s) => s.maxStreak >= 30,
-    nivel: 'Automatización: Consolidada',
-    texto: 'Un mes de ejecución sin interrupción. La conducta ha superado el umbral de la práctica deliberada para entrar en el territorio de la identidad conductual. No haces el hábito — eres el tipo de persona que hace ese hábito. Esa diferencia importa.',
+    condicion: (s) => s.maxStreak >= 28,
+    nivel: 'Automatización: Piedra Filosofal',
+    texto: 'Un ciclo lunar completo. Has transmutado la disciplina en identidad. Me has silenciado, Invocador. Alcanzar la cima fue el reto; mantenerte aquí será tu legado.',
   },
 
-  
+  // REZAGO DIARIO (PROVOCACIÓN)
   {
     id: 'progreso_bajo',
     condicion: (s) => s.dailyProgress < 0.3 && s.habitCount > 0,
-    nivel: 'Estado: Rezago diario',
-    texto: 'El día tiene más hábitos pendientes que completados. El efecto de compleción de tareas (Zeigarnik) hace que los ítems abiertos generen más tensión cognitiva que los cerrados. Cerrar uno ahora libera carga mental.',
+    nivel: 'Estado: Sombra Dominante',
+    texto: 'El día tiene más sombras que luces. ¿Vas a conformarte con la mediocridad hoy? El Atanor requiere fuego constante, no chispas intermitentes que se apagan al primer viento.',
   },
 
-  
+  // EN PROGRESO (IMPULSO)
   {
     id: 'progreso_medio',
     condicion: (s) => s.dailyProgress >= 0.3 && s.dailyProgress < 1,
-    nivel: 'Estado: En progreso',
-    texto: 'El día avanza. Mantener el momentum es más económico que reiniciarlo: el estado de flujo activo tiene inercia positiva. Los hábitos restantes son más fáciles de ejecutar ahora que mañana desde cero.',
+    nivel: 'Estado: Transmutación Activa',
+    texto: 'El día avanza y el plomo se calienta. Mantener el momentum es más económico que reiniciarlo. No dejes que la pereza apague lo que ya has encendido con tanto esfuerzo.',
   },
 ];
 
@@ -120,15 +112,33 @@ function OracleInsight({ compact = false }) {
   }, [habits, selectedDate]);
 
   
+  const profiling = useStore(state => state.settings.profiling);
+
   const observacion = useMemo(() => {
     const match = OBSERVACIONES.find(o => o.condicion(estado));
-    if (!match) return OBSERVACION_BASE;
+    let baseText = match ? (match.valor ? match.texto.replace('{streak}', match.valor(estado)) : match.texto) : OBSERVACION_BASE.texto;
+    let nivel = match ? match.nivel : OBSERVACION_BASE.nivel;
+
+    // Adaptación de Tono según Disciplina
+    const discipline = profiling?.disciplineLevel || 'Templada';
     
-    const texto = match.valor
-      ? match.texto.replace('{streak}', match.valor(estado))
-      : match.texto;
-    return { nivel: match.nivel, texto };
-  }, [estado]);
+    if (discipline === 'Frágil') {
+      // Suavizar: Menos presión, más apoyo
+      baseText = baseText
+        .replace('demoestrame que no eres un simple recolector', 'confío en que darás tu primer paso')
+        .replace('¿Podrás repetirlo mañana o fue solo un destello de suerte?', 'Celebra este logro; mañana daremos otro paso juntos.')
+        .replace('¿Te atreves a hacerme perder la apuesta?', 'Sigue nutriendo este hábito, vas por buen camino.')
+        .replace('¿Vas a conformarte con la mediocridad hoy?', 'No te sobreexijas, cada pequeño avance cuenta en tu proceso.');
+    } else if (discipline === 'Inquebrantable') {
+      // Endurecer: Más rigor, cero complacencia
+      baseText = baseText
+        .replace('Un hilo de luz bonito, pero frágil', 'Estructura básica. Inaceptable si buscas la maestría.')
+        .replace('Sigue así, si es que tus nervios lo soportan', 'No celebres. La verdadera forja apenas comienza.')
+        .replace('Admitiré que me has sorprendido', 'Cumples con lo mínimo esperado para alguien de tu estirpe.');
+    }
+
+    return { nivel, texto: baseText };
+  }, [estado, profiling]);
 
   const rangoActual = getRango(xp);
 

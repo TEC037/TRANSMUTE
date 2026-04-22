@@ -123,7 +123,9 @@ const AppLayout = ({ children }) => {
       </main>
 
       {}
-      <nav className="glass-card border-t border-[var(--color-midnight)]/5 z-50 flex-shrink-0 safe-area-bottom">
+      <nav 
+        className="glass-card border-t border-[var(--color-midnight)]/5 z-50 flex-shrink-0 safe-area-bottom"
+      >
 
         {}
         <div className="h-[2px] w-full bg-[var(--color-midnight)]/5">
@@ -143,7 +145,7 @@ const AppLayout = ({ children }) => {
                 key={id}
                 onClick={() => navigate(id)}
                 className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-all duration-300 active:scale-90 ${
-                  isActive ? 'text-[var(--color-gold)]' : 'text-[var(--color-midnight)] opacity-25 hover:opacity-60'
+                  isActive ? 'text-[var(--color-gold)]' : 'text-[var(--color-midnight)] opacity-50 hover:opacity-100'
                 }`}
               >
                 {}

@@ -1,16 +1,12 @@
 import { useEffect, useRef } from 'react';
+import { useStore } from '../store/useStore';
 
 /**
- * AlchemicalBackground v2.0 — CALDERA DEL ATANOR
- *
- * Las particulas nacen en la base del lienzo (el fuego del atanor),
- * ascienden con deriva termica sinusoidal y se disuelven en el eter
- * antes de renacer. Simula la conveccion alquimica de un crisol ardiendo.
- *
- * - Nigredo  -> particulas esmeralda ascendiendo desde las sombras.
- * - Citrinitas -> particulas doradas evaporandose en luz porcelana.
+ * AlchemicalBackground v3.0 — ATMÓSFERA PERSONALIZADA
+ * Reacciona al área de enfoque (profiling) del usuario.
  */
 const AlchemicalBackground = () => {
+  const profiling = useStore(state => state.settings.profiling);
   const canvasRef = useRef(null);
   const animRef   = useRef(null);
   const stateRef  = useRef({ particles: [], w: 0, h: 0 });
@@ -19,11 +15,16 @@ const AlchemicalBackground = () => {
     const canvas = canvasRef.current;
     const ctx    = canvas.getContext('2d');
 
-    
     const getThemeColors = () => {
-      const style = getComputedStyle(document.documentElement);
+      const focus = profiling?.focusArea || 'Mente';
+      const colors = {
+        'Cuerpo':   '239, 68, 68',   // Rojo
+        'Mente':    '59, 130, 246',  // Azul
+        'Espíritu': '217, 70, 239'   // Violeta
+      };
+      
       return {
-        rgb: style.getPropertyValue('--color-gold-rgb').trim() || '161,98,7',
+        rgb: colors[focus] || '161, 98, 7',
       };
     };
 

@@ -133,8 +133,10 @@ function Conclave() {
   const [feed, setFeed] = useState([]);
   const [aliados, setAliados] = useState([]);
   const [stats, setStats] = useState(null);
-  const [searchResults, setSearchResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
   const [inspectedAdeptId, setInspectedAdeptId] = useState(null);
 
   
@@ -256,28 +258,54 @@ function Conclave() {
 
         {tab === 'aliados' && (
           <motion.div key="aliados" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
-            {}
-            <div className="relative mb-6">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20" size={16} />
-              <input
-                type="text" placeholder="Buscar adeptos..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-[var(--color-midnight)]/5 rounded-2xl py-4 pl-12 pr-4 text-sm outline-none focus:ring-1 focus:ring-[var(--color-gold)]/20 transition-all font-serif"
-              />
-              {isSearching && <Zap className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-[var(--color-gold)]" size={16} />}
+            {/* Buscador de Adeptos */}
+            <div className="glass-card bg-[var(--color-midnight)] text-[var(--bg-porcelain)] p-6 mb-8 border border-[var(--color-gold)]/20 shadow-xl overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                <Users size={64} />
+              </div>
+              <h3 className="text-lg font-serif font-black uppercase mb-1">Forjar Alianzas</h3>
+              <p className="text-[10px] font-sans font-black uppercase tracking-widest opacity-40 mb-6 max-w-xs">Encuentra a otros adeptos para sincronizar voluntades y potenciar la Gran Obra.</p>
+              
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40" size={16} />
+                <input
+                  type="text" 
+                  placeholder="Buscar adepto por nombre..." 
+                  value={searchQuery} 
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full bg-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm outline-none focus:ring-1 focus:ring-[var(--color-gold)]/50 transition-all font-serif placeholder:text-white/20"
+                />
+                {isSearching && <Zap className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-[var(--color-gold)]" size={16} />}
+              </div>
             </div>
 
-            {}
+            {/* Resultados de Búsqueda */}
             <AnimatePresence>
               {searchResults.length > 0 && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mb-8 flex flex-col gap-2">
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mb-10 flex flex-col gap-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 px-2 mb-2 italic">Revelaciones del Atanor</h4>
                   {searchResults.map(res => {
                     const isAlly = aliados.some(a => (a.profiles?.id || a.following_id) === res.id);
                     if (res.id === userId) return null;
                     return (
-                      <div key={res.id} className="glass-card p-4 flex items-center justify-between">
-                        <span className="text-sm font-black font-serif">{res.display_name}</span>
-                        {isAlly ? <span className="text-[8px] font-black uppercase opacity-20">Ya es aliado</span> :
-                        <button onClick={() => handleFollow(res.id)} className="px-4 py-1.5 bg-[var(--color-midnight)] text-white text-[9px] font-black uppercase rounded-full">Aliar</button>}
+                      <div key={res.id} className="glass-card p-5 flex items-center justify-between border border-[var(--color-midnight)]/5 shadow-sm hover:border-[var(--color-gold)]/30 transition-all">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-black font-serif text-[var(--color-midnight)]">{res.display_name}</span>
+                          <span className="text-[9px] font-black uppercase opacity-20 tracking-widest">Nivel {res.level || 1}</span>
+                        </div>
+                        {isAlly ? (
+                          <div className="flex items-center gap-2 text-[var(--color-gold)] opacity-50">
+                            <span className="text-[9px] font-black uppercase tracking-widest">Aliado</span>
+                            <Check size={12} strokeWidth={3} />
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => handleFollow(res.id)} 
+                            className="px-6 py-2 bg-[var(--color-midnight)] text-[var(--bg-porcelain)] text-[10px] font-black uppercase tracking-[0.2em] rounded-full hover:bg-[var(--color-gold)] hover:text-[var(--color-midnight)] transition-all shadow-md"
+                          >
+                            Aliar
+                          </button>
+                        )}
                       </div>
                     );
                   })}

@@ -18,6 +18,7 @@ import Lock from 'lucide-react/dist/esm/icons/lock';
 import Check from 'lucide-react/dist/esm/icons/check';
 import Pencil from 'lucide-react/dist/esm/icons/pencil';
 import X from 'lucide-react/dist/esm/icons/x';
+import Compass from 'lucide-react/dist/esm/icons/compass';
 
 
 const NOMBRE_DEFAULT = 'Adept #001';
@@ -63,7 +64,7 @@ function FilaAjuste({ icono: Icono, titulo, subtitulo, accion, peligro = false, 
           {titulo}
         </p>
         {subtitulo && (
-          <p className="text-[9px] opacity-40 font-semibold uppercase tracking-widest mt-0.5 leading-tight">
+          <p className="text-[9px] opacity-60 font-semibold uppercase tracking-widest mt-0.5 leading-tight">
             {subtitulo}
           </p>
         )}
@@ -80,7 +81,7 @@ function FilaAjuste({ icono: Icono, titulo, subtitulo, accion, peligro = false, 
 function Seccion({ titulo, children }) {
   return (
     <div className="mb-6">
-      <span className="text-[9px] font-black uppercase tracking-[0.45em] opacity-30 font-serif px-1 block mb-1">
+      <span className="text-[9px] font-black uppercase tracking-[0.45em] opacity-60 font-serif px-1 block mb-1">
         {titulo}
       </span>
       <div className="glass-card border border-[var(--color-midnight)]/5 divide-y divide-[var(--color-midnight)]/5 px-4">
@@ -173,7 +174,7 @@ function TarjetaRango({ xp }) {
           >
             {rangoActual.nombre}
           </p>
-          <p className="text-[9px] font-black uppercase tracking-[0.25em] opacity-40 mt-0.5">
+          <p className="text-[9px] font-black uppercase tracking-[0.25em] opacity-60 mt-0.5">
             {rangoActual.subtitulo}
           </p>
           <p className="text-[10px] opacity-40 mt-1 leading-snug font-serif italic line-clamp-2">
@@ -289,6 +290,7 @@ function Ajustes() {
     if (nuevo) haptics.impactMedium();
   };
   const togglePublico = () => updateSettings({ isPublic: !settings.isPublic });
+  const toggleModoGuiado = () => updateSettings({ isGuidedMode: !settings.isGuidedMode });
 
   const ejecutarReset = async () => {
     const exito = await hardResetAccount();
@@ -450,6 +452,18 @@ function Ajustes() {
               idHtml="toggle-vibracion"
               activo={settings.vibrationEnabled ?? true}
               onToggle={toggleVibracion}
+            />
+          </FilaAjuste>
+
+          <FilaAjuste
+            icono={Compass}
+            titulo={settings.isGuidedMode ? 'Modo Guiado' : 'Modo Libre'}
+            subtitulo={settings.isGuidedMode ? 'Tavira estructura tu interfaz' : 'Control absoluto de la matriz'}
+          >
+            <AlchemyToggle
+              idHtml="toggle-modo-guiado"
+              activo={settings.isGuidedMode ?? true}
+              onToggle={toggleModoGuiado}
             />
           </FilaAjuste>
         </Seccion>

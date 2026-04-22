@@ -1,14 +1,7 @@
 /**
- * InvocadorSystem.js — Sistema de Progresión de Rangos
- *
- * Define los 10 niveles de rango del Transmutador basados en XP acumulado.
- * Cada rango tiene un ícono, nombre técnico y una descripción que mezcla
- * disciplina científica con la estética narrativa de TRANSMUTE.
- *
- * Fundamento: la progresión usa XP como métrica principal porque es una
- * función lineal del esfuerzo real (completitudes × multiplicador de racha),
- * garantizando que el rango refleje exactamente la energía invertida — 
- * en estricta equivalencia de intercambio.
+ * ELEMENTO: InvocadorSystem.js
+ * FASE: Beta (Estabilidad Crítica)
+ * PROPÓSITO: Sistema de rangos y títulos dinámicos basados en la experiencia acumulada.
  */
 
 export const INVOCADOR_TIERS = [

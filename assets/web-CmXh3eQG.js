@@ -1,1 +1,0 @@
-import{p as e}from"./vendor-BYvlpK8t.js";export{e as HapticsWeb};

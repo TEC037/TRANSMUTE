@@ -1,1 +1,0 @@
-import{d as e}from"./vendor-BYvlpK8t.js";export{e as ShareWeb};

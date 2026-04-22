@@ -86,24 +86,35 @@ function AlchemistDashboard() {
         return;
       }
 
+      // Guardar estilo original para restaurarlo después
+      const originalStyle = element.style.cssText;
+
       try {
         toast.loading("Emanando Códice del Ser...", { id: 'capture' });
         
-        // Esperar a que las fuentes y estilos se asienten
-        await new Promise(r => setTimeout(r, 1000)); 
+        // HACK: Forzar visibilidad y posición para que el motor de renderizado lo procese
+        element.style.opacity = "1";
+        element.style.position = "fixed";
+        element.style.left = "0";
+        element.style.top = "0";
+        element.style.zIndex = "9999";
+        element.style.visibility = "visible";
+        element.style.display = "block";
+
+        // Esperar a que el navegador realice el layout y pinte
+        await new Promise(r => setTimeout(r, 1200)); 
         
         const dataUrl = await toPng(element, { 
           cacheBust: true,
           pixelRatio: 2,
-          backgroundColor: '#EBE9E4',
-          style: {
-            opacity: 1, // Asegurar opacidad durante captura
-            visibility: 'visible'
-          }
+          backgroundColor: '#EBE9E4'
         });
 
-        if (!dataUrl || dataUrl.length < 100) {
-          throw new Error("El atanor produjo una imagen vacía");
+        // Restaurar estilo original inmediatamente
+        element.style.cssText = originalStyle;
+
+        if (!dataUrl || dataUrl.length < 500) {
+          throw new Error("La transmutación produjo un pergamino vacío");
         }
         
         const canShare = await Share.canShare();

@@ -22,7 +22,7 @@ export const ExportManuscriptView = forwardRef(({ habits, date, userName }, ref)
 
       <div className="relative z-10 flex flex-col flex-1">
         <header className="mb-10 text-center flex flex-col items-center">
-          <div className="w-16 h-16 border-2 border-[#1A181C]/10 rounded-full flex items-center justify-center mb-4 bg-white/30 backdrop-blur-sm">
+          <div className="w-16 h-16 border-2 border-[#1A181C]/10 rounded-full flex items-center justify-center mb-4 bg-white/60">
             <span className="text-[#1A181C] font-serif font-black text-2xl tabular-nums">{completionRate}%</span>
           </div>
           <h1 className="text-4xl font-black uppercase tracking-tighter mb-2" style={{ color: '#1A181C' }}>

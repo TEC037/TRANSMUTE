@@ -79,18 +79,34 @@ function AlchemistDashboard() {
   useEffect(() => {
     if (!isCapturing) return;
     const handleCapture = async () => {
+      const element = manuscriptRef.current;
+      if (!element) {
+        toast.error("Error: Altar de captura no encontrado");
+        setIsCapturing(false);
+        return;
+      }
+
       try {
         toast.loading("Emanando Códice del Ser...", { id: 'capture' });
-        await new Promise(r => setTimeout(r, 600)); 
-        const dataUrl = await domToPng(manuscriptRef.current, { quality: 1, scale: 2 });
         
+        // Esperar a que las fuentes y estilos se asienten
+        await new Promise(r => setTimeout(r, 800)); 
+        
+        const dataUrl = await domToPng(element, { 
+          quality: 1, 
+          scale: 3,
+          backgroundColor: '#EBE9E4'
+        });
+
+        if (!dataUrl || dataUrl.length < 100) {
+          throw new Error("Imagen generada vacía");
+        }
         
         const canShare = await Share.canShare();
         
         if (canShare.value) {
           try {
             const fileName = `Codice-Transmute-${Date.now()}.png`;
-            
             const base64Data = dataUrl.split(',')[1];
             
             const savedFile = await Filesystem.writeFile({
@@ -101,29 +117,31 @@ function AlchemistDashboard() {
 
             await Share.share({
               title: 'Códice Transmute',
-              text: 'Mi progreso en la Gran Obra del Alquimista.',
+              text: 'Mi progreso en la Gran Obra.',
               files: [savedFile.uri],
-              dialogTitle: 'Emanar Códice'
             });
           } catch (e) {
-            
             await Share.share({
               title: 'Códice Transmute',
               url: dataUrl
             });
           }
         } else {
-          
+          // Fallback para navegadores de escritorio
           const link = document.createElement('a');
           link.download = `Codice-Transmute-${Date.now()}.png`;
           link.href = dataUrl;
+          document.body.appendChild(link);
           link.click();
+          document.body.removeChild(link);
         }
         
-        toast.success("Emanación Consolidada", { id: 'capture' });
+        toast.success("Códice Emanado", { id: 'capture' });
       } catch (err) { 
-        toast.error("Error en el Atanor", { id: 'capture' }); 
-      } finally { setIsCapturing(false); }
+        toast.error("Fallo en la transmutación visual", { id: 'capture', description: err.message }); 
+      } finally { 
+        setIsCapturing(false); 
+      }
     };
     handleCapture();
   }, [isCapturing]);
@@ -179,10 +197,11 @@ function AlchemistDashboard() {
           )}
         </AnimatePresence>
 
-        {/* ─────────────────────────────────────────────────────────────
-            EXPORTACIÓN OCULTA
-        ───────────────────────────────────────────────────────────── */}
-        <div className="fixed pointer-events-none" style={{ top: '-10000px', left: '-10000px', width: '600px' }}>
+        {/* [LÓGICA]: Contenedor de captura (Invisible pero presente para el renderizador) */}
+        <div 
+          className="fixed pointer-events-none opacity-0" 
+          style={{ zIndex: -1000, left: 0, top: 0, width: '600px' }}
+        >
           <ExportManuscriptView ref={manuscriptRef} habits={habits} date={selectedDate} userName={settings.displayName} />
         </div>
 
